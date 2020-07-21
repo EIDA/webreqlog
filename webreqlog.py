@@ -17,7 +17,6 @@
 #
 #*****************************************************************************
 
-#from io import BytesIO as StringIO
 from io import StringIO 
 import os, sys, re, gc, socket
 from datetime import datetime, timedelta
