@@ -1280,42 +1280,42 @@ $(document).ready(function() {
 		args = dict(session.args)
 		if session.args.has_key("lines"):
 			del(args["lines"])
-		print >> out, "%s" % self.link("summary", "Summary Page", args, cls="border")
+		out.write("%s\n" % self.link("summary", "Summary Page", args, cls="border"))
 
-		print >> out,  "<pre><br>"
-		print >> out,  "<h2>Arclink Requests</h2>"
+		out.write( "<pre><br>\n")
+		out.write( "<h2>Arclink Requests</h2>\n")
 
 		if session.args.get("onlyErrors", None):
-			print >> out,  "only erroneous requests lines are displayed"
+			out.write( "only erroneous requests lines are displayed\n")
 
 		streamID = session.args.get("streamID", None)
 		if streamID:
-			print >> out,  "limited to station: %s" % streamID
+			out.write( "limited to station: %s\n" % streamID)
 
 		message = session.args.get("message", None)
 		if message:
-			print >> out,  "limited to message: %s" % message.replace("%20", " ")
-		print >> out
+			out.write( "limited to message: %s\n" % message.replace("%20", " "))
+		out.write("\n")
 
 
 		for request in requests:
-			print >> out, '<div class="RequestHeader">'
+			out.write('<div class="RequestHeader">\n')
 
 			args = dict()
 			args["session"] = session.args.get("session")
 			args["requestID"] = request.requestID()
 			args["lines"] = "yes"
 			rl = self.link("requests", "%s"%request.requestID(), args)
-			print >> out, "REQUEST_ID %s" % rl
+			out.write("REQUEST_ID %s" % rl)
 
-			print >> out, "TYPE %s" % request.type()
-			print >> out, "USER %s" % request.userID()
-			if request.userIP(): print >> out, "USER_IP %s "% request.userIP()
-			print >> out, "CREATED %s " % request.created()
-			if request.clientID(): print >> out, "CLIENT_ID %s " % request.clientID()
-			if request.clientIP(): print >> out, "CLIENT_IP %s " % request.clientIP()
-			if request.header(): print >> out, "HEADER %s" % request.header()
-			if request.label(): print >> out, "LABEL %s" % request.label()
+			out.write("TYPE %s" % request.type())
+			out.write("USER %s" % request.userID())
+			if request.userIP(): out.write("USER_IP %s \n"% request.userIP())
+			out.write("CREATED %s \n" % request.created())
+			if request.clientID(): out.write("CLIENT_ID %s \n" % request.clientID())
+			if request.clientIP(): out.write("CLIENT_IP %s \n" % request.clientIP())
+			if request.header(): out.write("HEADER %s\n" % request.header())
+			if request.label(): out.write("LABEL %s\n" % request.label())
 
 			for i in range(request.arclinkRequestLineCount()):
 				line = request.arclinkRequestLine(i)
@@ -1324,7 +1324,7 @@ $(document).ready(function() {
 				if line.status().status() == "OK": cl = "ok"
 				else: cl = "error"
 
-				print >> out, '<span class="%s">%s' % (cl , line.start()), line.end(), \
+				out.write('<span class="%s">%s' % (cl , line.start()), line.end(), \
 						line.streamID().networkCode()+ \
 						" "+line.streamID().stationCode()+ \
 						" "+line.streamID().locationCode()+ \
@@ -1334,17 +1334,17 @@ $(document).ready(function() {
 						line.status().status(), \
 						line.status().size(), \
 						line.status().message(), \
-						"</span>"
+						"</span>\n")
 			try: reqErrors = request.summary().totalLineCount() - request.summary().okLineCount()
 			except: reqErrors = 0
 			if reqErrors > 0: cl = "error"
 			else: cl = "ok"
 			try:
-				print >> out, '<span class="%s">TOTAL_LINES %d' % (cl, request.summary().totalLineCount())
-				print >> out, "ERROR_LINES %d</span>" % reqErrors
-				print >> out, "AVERAGE_TIME_WINDOW %d" % request.summary().averageTimeWindow()
+				out.write('<span class="%s">TOTAL_LINES %d\n' % (cl, request.summary().totalLineCount()))
+				out.write("ERROR_LINES %d</span>\n" % reqErrors)
+				out.write("AVERAGE_TIME_WINDOW %d\n" % request.summary().averageTimeWindow())
 			except:
-				print >> out, "!!! ERROR in printRequests() !!!"
+				out.write("!!! ERROR in printRequests() !!!\n")
 				pass
 
 			if request.arclinkStatusLineCount() == 0:
@@ -1353,12 +1353,12 @@ $(document).ready(function() {
 				line = request.arclinkStatusLine(i)
 				if line.status() != 'OK': cl = "error"
 				else: cl = "ok"
-				print >> out, 'VOLUME %s <span class="%s">%s</span> %d <span class="%s">%s</span>' % (line.volumeID(), cl, line.status(), line.size(), cl, line.message())
+				out.write('VOLUME %s <span class="%s">%s</span> %d <span class="%s">%s</span>\n' % (line.volumeID(), cl, line.status(), line.size(), cl, line.message()))
 
-			print >> out, request.status(), request.message()
-			print >> out, "</div>"
+			out.write(request.status(), request.message())
+			out.write("</div>\n")
 
-		print >> out,  "</pre>"
+		out.write( "</pre>\n")
 
 #----------------------------------------------------------------------------------------------------
 
@@ -1535,3 +1535,4 @@ app = WebReqLog(len(sys.argv), sys.argv)
 sys.exit(app())
 #----------------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------
+
