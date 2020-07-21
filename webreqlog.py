@@ -17,7 +17,7 @@
 #
 #*****************************************************************************
 
-from io import StringIO 
+from io import StringIO
 import os, sys, re, gc, socket
 from datetime import datetime, timedelta
 from wsgiref.simple_server import make_server
@@ -1535,4 +1535,3 @@ app = WebReqLog(len(sys.argv), sys.argv)
 sys.exit(app())
 #----------------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------
-
