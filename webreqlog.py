@@ -6,7 +6,7 @@
 #
 #
 # (c) 2010 Mathias Hoffmann, GFZ Potsdam
-# 2020 ported to Seiscomp 4 by Stefan Heimers
+# 2020 ported to Seiscomp 4 and python3 by Stefan Heimers
 #
 # This program is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by the
@@ -17,7 +17,8 @@
 #
 #*****************************************************************************
 
-from io import BytesIO as StringIO 
+#from io import BytesIO as StringIO
+from io import StringIO 
 import os, sys, re, gc, socket
 from datetime import datetime, timedelta
 from wsgiref.simple_server import make_server
@@ -25,16 +26,10 @@ from seiscomp import logs
 import seiscomp.core, seiscomp.client, seiscomp.system, seiscomp.datamodel, seiscomp.logging, seiscomp.io
 import uuid
 import smtplib
-from email.MIMEText import MIMEText
+from email.mime.text import MIMEText
 
-VERSION = "1.0.2 (2020.169)"
-
-#EMAIL_FROM = "sysop@gfz-potsdam.de"
-#EMAIL_FROM = os.getenv('USER') + "@" + socket.getfqdn()
+VERSION = "1.0.3 (2020.203)"
 EMAIL_FROM =  socket.gethostname() + "." + os.getenv("LOGNAME").replace("LOGNAME=","") + "@sed.ethz.ch"
-
-
-#EMAIL_SMTP = "smtp.gfz-potsdam.de"
 EMAIL_SMTP = "localhost"
 
 
@@ -95,7 +90,6 @@ def str2date(line):
 	m = dateTimeSelector.search(line.replace("%20", " "))
 	if m:
 		d = m.groupdict()
-		#print d
 		if d["datetime"]:
 			return seiscomp.core.Time.FromString(d["datetime"], "%Y-%m-%d %H:%M:%S")
 		if d["date"]:
@@ -153,8 +147,6 @@ class Session:
 				id = str(uuid.uuid4()).split("-")[0]
 				if id not in Session.sessions: break
 
-		#self.args = Session.sessions.setdefault(id, dict())
-		#self.args.update(args)
 		self.args = args
 		self.args["session"] = id
 #----------------------------------------------------------------------------------------------------
@@ -198,7 +190,7 @@ class Counter:
 		e = request.summary().totalLineCount() - request.summary().okLineCount()
 
 		volSize = 0
-		for i in xrange(request.arclinkStatusLineCount()):
+		for i in range(request.arclinkStatusLineCount()):
 			sline = request.arclinkStatusLine(i)
 			volSize += sline.size()
 		volSize /= 1e6
@@ -295,7 +287,7 @@ class WebReqLog(seiscomp.client.Application):
 	def initConfiguration(self):
 		if not seiscomp.client.Application.initConfiguration(self):
                         print ("not seiscomp.client.Application.initConfiguration")
-			return False
+                        return False
 
 
 		self.urls = {"summary": self.wwwSummary \
@@ -513,8 +505,6 @@ function hide(o)
 
 		ret += '<div class="body">'
 		ret += '<h1>ArcLink Request Log Tool</h1><br>'
-		#ret += "<h2 style='color:red'>under construction ...</h2>"
-		#ret += "<br>"
 
 		now = datetime.now()
 		start = now - timedelta(days=3)
@@ -522,8 +512,6 @@ function hide(o)
 		startTime = seiscomp.core.Time(start.year, start.month, start.day)
 		endTime = seiscomp.core.Time(tomorrow.year, tomorrow.month, tomorrow.day)
 
-		#args = {"startTime":"2010-04-22", "endTime":"2010-04-30"}
-		#ret += "<h2>%s</h2>" % self.link("summary", "GET REQUEST STATISTIC", args)
 		ret += '<div class="IndexMenu">'
 		ret += "<h2>%s</h2>" % "SHOW REQUESTS AND SUMMARY"
 		ret += """
@@ -916,11 +904,8 @@ $(document).ready(function() {
 		del(requests)
 
 		gc.collect()
-		#gc.set_debug(gc.DEBUG_LEAK)
-		#print "GC: ", gc.garbage
 
 		ret += out.getvalue()
-		#ret += '<script language="JavaScript"> document.body.classname = white </script>'
 		ret += '</div></body>'
 		ret += self.htmlFooter()
 
@@ -987,7 +972,7 @@ $(document).ready(function() {
 
 			if request.arclinkStatusLineCount() == 0:
 				self.query().loadArclinkStatusLines(request)
-			for i in xrange(request.arclinkStatusLineCount()):
+			for i in range(request.arclinkStatusLineCount()):
 				sline = request.arclinkStatusLine(i)
 				if sline.status() == 'OK': err = 0
 				else: err = 1
@@ -1011,7 +996,7 @@ $(document).ready(function() {
 
 			if self.export and request.type().upper() == 'WAVEFORM' and request.arclinkRequestLineCount() == 0:
 				self.query().loadArclinkRequestLines(request)
-			for i in xrange(request.arclinkRequestLineCount()):
+			for i in range(request.arclinkRequestLineCount()):
 				line = request.arclinkRequestLine(i)
 
 				stream = line.streamID().networkCode()+"."+line.streamID().stationCode()
@@ -1055,7 +1040,7 @@ $(document).ready(function() {
 				(lines, nodataCount, errorCount, s) = netcounts.setdefault(netcode, (0, 0, 0, 0))
 				netcounts[netcode] = (lines+1, nodataCount+nodata, errorCount+error, s+size)
 
-			for netcode, (lineCount, nodataCount, errorCount, size) in netcounts.iteritems():
+			for netcode, (lineCount, nodataCount, errorCount, size) in netcounts.items():
 				(count, lines, nodata, error, s) = nets.setdefault(netcode, (0, 0, 0, 0, 0))
 				nets[netcode] = (count +1, lines+lineCount, nodata+nodataCount, error+errorCount, s+size)
 
@@ -1090,66 +1075,65 @@ $(document).ready(function() {
 			if request.created() > timeMax: timeMax = request.created()
 
 		args = dict()
-		print >> out, "%s" % self.link("", "Start Page", args, cls="border")
+		out.write("%s\n" % self.link("", "Start Page", args, cls="border"))
 
 		args = dict()
 		args["startTime"] = session.args.get("startTime")
 		args["endTime"] = session.args.get("endTime")
-		print >> out, "%s" % self.link("summary", "RESET", args, cls="border")
+		out.write("%s\n" % self.link("summary", "RESET", args, cls="border"))
 
 		args = dict()
 		args["startTime"] = (datetime.now()-timedelta(days=1)).strftime("%Y-%m-%d")
 		args["endTime"] = (datetime.now()+timedelta(days=1)).strftime("%Y-%m-%d")
-		print >> out, "%s" % self.link("summary", "recent", args, cls="border")
+		out.write( "%s\n" % self.link("summary", "recent", args, cls="border"))
 
 		args = dict(session.args)
 		if session.args.get("lines", "") != "yes":
 			args["lines"] = "yes"
-			print >> out, "%s" % self.link("summary", "SHOW detailed station counts", args, cls="border")
+			out.write( "%s\n" % self.link("summary", "SHOW detailed station counts", args, cls="border"))
 		else:
 			del(args["lines"])
-			print >> out, "%s" % self.link("summary", "HIDE detailed station counts", args, cls="border")
+			out.write( "%s\n" % self.link("summary", "HIDE detailed station counts", args, cls="border"))
 
 		args = dict(session.args)
 		if session.args.get("onlyErrors", "") != "yes":
 			args["onlyErrors"] = "yes"
-			print >> out, "%s" % self.link("summary", "SHOW only Requests WITH Errors", args, cls="border")
+			out.write( "%s\n" % self.link("summary", "SHOW only Requests WITH Errors", args, cls="border"))
 		else:
 			del(args["onlyErrors"])
-			print >> out, "%s" % self.link("summary", "SHOW Requests WITH & WITHOUT Errors", args, cls="border")
+			out.write( "%s\n" % self.link("summary", "SHOW Requests WITH & WITHOUT Errors", args, cls="border"))
 
 		self.printArgs(out, session.args)
-		print >> out,  "<pre>"
-		print >> out,  "<h2>Arclink Request Report</h2>"
-		print >> out,  "generated: %s UTC" % datetime.now()
-		print >> out,  ""
-		print >> out,  "Start: %s (first: %s)" % (date2str(startTime), date2str(timeMin))
-		print >> out,  "End  : %s (last : %s)" % (date2str(endTime), date2str(timeMax))
-		print >> out
+		out.write("<pre>\n")
+		out.write("<h2>Arclink Request Report</h2>\n")
+		out.write("generated: %s UTC\n" % datetime.now())
+		out.write("\n")
+		out.write("Start: %s (first: %s)\n" % (date2str(startTime), date2str(timeMin)))
+		out.write("End  : %s (last : %s)\n" % (date2str(endTime), date2str(timeMax)))
+		out.write("\n")
 
 		args = dict(session.args)
 		args["lines"] = "yes"
 		l = self.link("requests", "%d"%len(requests), args)
-		print >> out,  "Requests:\t%s" % l
+		out.write(  "Requests:\t%s\n" % l)
 
 		args = dict(session.args)
 		args["lines"] = "yes"
 		args["onlyErrors"] = "yes"
 		l = self.link("requests", "%d"%len(errors), args)
-		print >> out,  "  with Errors:\t%s" % l
+		out.write("  with Errors:\t%s\n" % l)
+		out.write("Error Count:\t%d\n" %  sum(errors.values()))
+		out.write("Users:\t\t%d\n" % len(users))
+		out.write("Total Lines:\t%d\n" % sum([l for c,l,e,s in users.values()]))
+		out.write("Total Size:\t%s\n" % byte2h(sum([s for c,e,s in volumes.values()]), self.bytes))
 
-		print >> out,  "Error Count:\t%d" %  sum(errors.values())
-		print >> out,  "Users:\t\t%d" % len(users)
-		print >> out,  "Total Lines:\t%d" % sum([l for c,l,e,s in users.values()])
-		print >> out,  "Total Size:\t%s" % byte2h(sum([s for c,e,s in volumes.values()]), self.bytes)
+		if len(streams): out.write(  "Stations:\t%d\n" % len(streams))
 
-		if len(streams): print >> out,  "Stations:\t%d" % len(streams)
-
-		print >> out, ""
-		print >> out,  '<table class="sortable" width="100%">'
-		print >> out,  "<thead>"
-		print >> out,  "<tr><th>User</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th><th>Size</th></tr>"
-		print >> out,  "</thead><tbody>"
+		out.write("\n")
+		out.write('<table class="sortable" width="100%">\n')
+		out.write("<thead>\n")
+		out.write("<tr><th>User</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th><th>Size</th></tr>\n")
+		out.write("</thead><tbody>\n")
 		for k,(r,l,o,s) in sorted(users.items()):
 			args = dict(session.args)
 			args["userID"] = k
@@ -1159,25 +1143,25 @@ $(document).ready(function() {
 			ll = self.link("requests", "%-6d"%l, args)
 			args["onlyErrors"] = "yes"
 			lo = self.link("requests", "%-6d"%o, args)
-			print >> out,  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td><td sorttable_customkey="%d">%10s</td></tr>' % (ul,rl,ll,lo, s, byte2h(s, self.bytes))
-		print >> out,  "</tbody></table>"
+			out.write('<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td><td sorttable_customkey="%d">%10s</td></tr>\n' % (ul,rl,ll,lo, s, byte2h(s, self.bytes)))
+		out.write("</tbody></table>\n")
 
 		if len(nets) > 0:
-			print >> out, ""
-			print >> out,  '<table class="sortable" width="100%">'
-			print >> out,  "<thead>"
-			print >> out,  "<tr><th>Network</th><th>Requests</th><th>Lines</th><th>Nodata</th><th>Errors</th><th>Size</th></tr>"
-			print >> out,  "</thead><tbody>"
+			out.write("\n")
+			out.write('<table class="sortable" width="100%">\n')
+			out.write("<thead>\n")
+			out.write("<tr><th>Network</th><th>Requests</th><th>Lines</th><th>Nodata</th><th>Errors</th><th>Size</th></tr>\n")
+			out.write("</thead><tbody>\n")
 			for k,(r,l,n,o,s) in sorted(nets.items()):
 				if s > 0:
-					print >> out,  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td sorttable_customkey="%d">%10s</td></tr>' % (k,r,l,n,o, s, byte2h(s, self.bytes))
-			print >> out,  "</tbody></table>"
+					out.write('<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td sorttable_customkey="%d">%10s</td></tr>\n' % (k,r,l,n,o, s, byte2h(s, self.bytes)))
+			out.write(  "</tbody></table>\n")
 
-		print >> out , ""
-		print >> out,  '<table class="sortable" width="100%">'
-		print >> out,  "<thead>"
-		print >> out,  "<tr><th>Request Type</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th></tr>"
-		print >> out,  "</thead><tbody>"
+		out.write("\n")
+		out.write(  '<table class="sortable" width="100%">\n')
+		out.write(  "<thead>\n")
+		out.write(  "<tr><th>Request Type</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th></tr>\n")
+		out.write(  "</thead><tbody>\n")
 		for k,(r,l,o) in rtypes.items():
 			args = dict(session.args)
 			args["type"] = k
@@ -1187,29 +1171,29 @@ $(document).ready(function() {
 			ll = self.link("requests", "%-6d"%l, args)
 			args["onlyErrors"] = "yes"
 			lo = self.link("requests", "%-6d"%o, args)
-			print >> out,  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>' % (ul,rl,ll,lo)
-		print >> out,  "</tbody></table>"
+			out.write(  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n' % (ul,rl,ll,lo))
+		out.write(  "</tbody></table>\n")
 
-		print >> out , ""
-		print >> out,  '<table class="sortable" width="100%">'
-		print >> out,  "<thead>"
-		print >> out,  "<tr><th>Volume</th><th>Count</th><th>Nodata/Errors</th><th>Size</th></tr>"
-		print >> out,  "</thead><tbody>"
+		out.write( "\n")
+		out.write(  '<table class="sortable" width="100%">\n')
+		out.write(  "<thead>\n")
+		out.write(  "<tr><th>Volume</th><th>Count</th><th>Nodata/Errors</th><th>Size</th></tr>\n")
+		out.write(  "</thead><tbody>\n")
 		for k,(c,e,s) in sorted(volumes.items()):
 			args = dict(session.args)
 			args["volume"] = k
 			kl = self.link("summary", "%-15s"%k, args)
 			args["onlyErrors"] = "yes"
 			el = self.link("requests", "%d"%e, args)
-			print >> out,  '<tr><td class="left">%s</td><td>%d</td><td>%s</td><td sorttable_customkey="%d">%s</td></tr>' % (kl,c,el,s,byte2h(s, self.bytes))
-		print >> out,  "</tbody></table>"
+			out.write('<tr><td class="left">%s</td><td>%d</td><td>%s</td><td sorttable_customkey="%d">%s</td></tr>\n' % (kl,c,el,s,byte2h(s, self.bytes)))
+		out.write("</tbody></table>\n")
 
 		if session.args.get("lines") and len(streams) > 0:
-			print >> out , ""
-			print >> out,  '<table class="sortable" width="100%">'
-			print >> out,  "<thead>"
-			print >> out,  "<tr><th>Station</th><th>Requests</th><th>Nodata</th><th>Errors</th><th>Size</th><th>Time</th></tr>"
-			print >> out,  "</thead><tbody>"
+			out.write("\n")
+			out.write('<table class="sortable" width="100%">\n')
+			out.write("<thead>\n")
+			out.write("<tr><th>Station</th><th>Requests</th><th>Nodata</th><th>Errors</th><th>Size</th><th>Time</th></tr>\n")
+			out.write("</thead><tbody>\n")
 			for k,(r,n,o,s,tw) in sorted(streams.items()):
 				args = dict(session.args)
 				args["streamID"] = k+".*.*"
@@ -1219,29 +1203,29 @@ $(document).ready(function() {
 				args["onlyErrors"] = "yes"
 				nl = self.link("requests", "%-6d"%o, args)
 				ol = self.link("requests", "%-6d"%o, args)
-				print >> out,  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td><td sorttable_customkey="%d">%s</td><td sorttable_customkey="%d" >%s</td></tr>' % (sl,rl,nl,ol, s,byte2h(s, self.bytes), tw,sec2h(tw, self.secs))
-			print >> out,  "</tbody></table>"
+				out.write('<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td><td sorttable_customkey="%d">%s</td><td sorttable_customkey="%d" >%s</td></tr>\n' % (sl,rl,nl,ol, s,byte2h(s, self.bytes), tw,sec2h(tw, self.secs)))
+			out.write("</tbody></table>\n")
 
-		if len(messages) > 1 or (len(messages) == 1 and messages.keys()[0] != ""):
-			print >> out , ""
-			print >> out,  '<table class="sortable" width="100%">'
-			print >> out,  "<thead>"
-			print >> out,  "<tr><th>Count</th><th>Message</th></tr>"
-			print >> out,  "</thead><tbody>"
+		if len(messages) > 1 or (len(messages) == 1 and list(messages.keys())[0] != ""):
+			out.write("\n")
+			out.write('<table class="sortable" width="100%">\n')
+			out.write("<thead>\n")
+			out.write("<tr><th>Count</th><th>Message</th></tr>\n")
+			out.write("</thead><tbody>\n")
 			for k,c in sorted(messages.items()):
 				if len(k) > 0:
 					args = dict(session.args)
 					args["message"] = html_escape(k).replace(" ", "%20")
 					kl = self.link("requests", "%-30s" % html_escape(k), args)
-					print >> out,  '<tr><td class="left">%d</td><td>%s</td></tr>' % (c,kl)
-			print >> out,  "</tbody></table>"
+					out.write('<tr><td class="left">%d</td><td>%s</td></tr>\n' % (c,kl))
+			out.write("</tbody></table>\n")
 
 		if len(userIPs) > 0:
-			print >> out , ""
-			print >> out,  '<table class="sortable" width="100%">'
-			print >> out,  "<thead>"
-			print >> out,  "<tr><th>UserIP</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th></tr>"
-			print >> out,  "</thead><tbody>"
+			out.write("\n")
+			out.write('<table class="sortable" width="100%">\n')
+			out.write("<thead>\n")
+			out.write("<tr><th>UserIP</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th></tr>\n")
+			out.write("</thead><tbody>\n")
 			for k,(r,l,o) in sorted(userIPs.items()):
 				args = dict(session.args)
 				args["userIP"] = k
@@ -1251,15 +1235,15 @@ $(document).ready(function() {
 				ll = self.link("requests", "%-6d"%l, args)
 				args["onlyErrors"] = "yes"
 				lo = self.link("requests", "%-6d"%o, args)
-				print >> out,  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>' % (sk,rl,ll,lo)
-			print >> out,  "</tbody></table>"
+				out.write('<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n' % (sk,rl,ll,lo))
+			out.write("</tbody></table>\n")
 
 		if len(clientIPs) > 0:
-			print >> out , ""
-			print >> out,  '<table class="sortable" width="100%">'
-			print >> out,  "<thead>"
-			print >> out,  "<tr><th>ClientIP</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th></tr>"
-			print >> out,  "</thead><tbody>"
+			out.write("\n")
+			out.write('<table class="sortable" width="100%">\n')
+			out.write("<thead>\n")
+			out.write("<tr><th>ClientIP</th><th>Requests</th><th>Lines</th><th>Nodata/Errors</th></tr>\n")
+			out.write("</thead><tbody>\n")
 			for k,(r,l,o) in sorted(clientIPs.items()):
 				args = dict(session.args)
 				args["clientIP"] = k
@@ -1269,11 +1253,11 @@ $(document).ready(function() {
 				ll = self.link("requests", "%-6d"%l, args)
 				args["onlyErrors"] = "yes"
 				lo = self.link("requests", "%-6d"%o, args)
-				print >> out,  '<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>' % (sk,rl,ll,lo)
-			print >> out,  "</tbody></table>"
+				out.write('<tr><td class="left">%s</td><td>%s</td><td>%s</td><td>%s</td></tr>\n' % (sk,rl,ll,lo))
+			out.write( "</tbody></table>\n")
 
-		print >> out,  "</pre>"
-		print >> out, "<hr /><address>"
+		out.write("</pre>\n")
+		out.write("<hr /><address>\n")
 		args = list()
 		for w in sys.argv:
 			if w.startswith("mysql:"):
@@ -1283,9 +1267,9 @@ $(document).ready(function() {
 				w = "/".join(tmp)
 			args.append(w)
 		osuser = os.getenv("LOGNAME").replace("LOGNAME=","")
-		print >> out, osuser + "@" + socket.getfqdn() + "> "+" ".join(args)
-		print >> out, "<br />Version:", VERSION
-		print >> out, "</address>"
+		out.write(osuser + "@" + socket.getfqdn() + " " + " ".join(args)+"\n")
+		out.write("<br />Version:" + VERSION)
+		out.write("</address>")
 
 
 #----------------------------------------------------------------------------------------------------
@@ -1334,7 +1318,7 @@ $(document).ready(function() {
 			if request.header(): print >> out, "HEADER %s" % request.header()
 			if request.label(): print >> out, "LABEL %s" % request.label()
 
-			for i in xrange(request.arclinkRequestLineCount()):
+			for i in range(request.arclinkRequestLineCount()):
 				line = request.arclinkRequestLine(i)
 
 
@@ -1366,7 +1350,7 @@ $(document).ready(function() {
 
 			if request.arclinkStatusLineCount() == 0:
 				self.query().loadArclinkStatusLines(request)
-			for i in xrange(request.arclinkStatusLineCount()):
+			for i in range(request.arclinkStatusLineCount()):
 				line = request.arclinkStatusLine(i)
 				if line.status() != 'OK': cl = "error"
 				else: cl = "ok"
@@ -1471,7 +1455,7 @@ $(document).ready(function() {
 			foundVolume = False
 			self.query().loadArclinkStatusLines(request)
 			if volume and request.arclinkStatusLineCount() == 0: continue
-			for i in xrange(request.arclinkStatusLineCount()):
+			for i in range(request.arclinkStatusLineCount()):
 				sline = request.arclinkStatusLine(i)
 				vol = sline.volumeID()
 				if volume and volume != vol: continue
@@ -1487,7 +1471,7 @@ $(document).ready(function() {
 				lineCount = 0
 				errorCount = 0
 				tw = seiscomp.core.TimeSpan(0.)
-				for i in xrange(request.arclinkRequestLineCount()):
+				for i in range(request.arclinkRequestLineCount()):
 					line = request.arclinkRequestLine(i)
 					vol = line.status().volumeID()
 					if volume and volume != vol: continue
@@ -1532,18 +1516,17 @@ $(document).ready(function() {
 
 #----------------------------------------------------------------------------------------------------
 	def printArgs(self, out, args):
-		print >> out, '<div id="f2" onclick="hide(this)">'
-		print >> out, '<span style="font-weight:bold">Effective Constraints</span><pre>'
-		for k,v in args.iteritems():
-			print >> out, "%s = %s" % (k,v.replace("%20"," "))
-		print >> out, "</pre></div>"
+		print('<div id="f2" onclick="hide(this)">',file=out)
+		print('<span style="font-weight:bold">Effective Constraints</span><pre>',file=out)
+		for k,v in args.items():
+			print ( "%s = %s" % (k,v.replace("%20"," ")),file=out)
+		print("</pre></div>",file=out)
 #----------------------------------------------------------------------------------------------------
 
 
 
 #----------------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------
-#if __name__ == "__main__":
 logs.debug = seiscomp.logging.debug
 logs.info = seiscomp.logging.info
 logs.notice = seiscomp.logging.notice
@@ -1553,5 +1536,4 @@ app = WebReqLog(len(sys.argv), sys.argv)
 sys.exit(app())
 #----------------------------------------------------------------------------------------------------
 #----------------------------------------------------------------------------------------------------
-
 
