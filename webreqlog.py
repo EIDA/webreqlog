@@ -236,7 +236,7 @@ class WebReqLog(seiscomp.client.Application):
 		seiscomp.client.Application.createCommandLineDescription(self)
 
 		self.commandline().addGroup("WebServer")
-		self.commandline().addStringOption("WebServer", "host", "serve on IP address; default: all interfaces", "")
+		self.commandline().addStringOption("WebServer", "webhost", "serve on IP address; default: all interfaces", "")
 		self.commandline().addIntOption("WebServer", "port", "listen on port; default: 8000", 8000)
 
 		self.commandline().addGroup("Export")
@@ -252,7 +252,7 @@ class WebReqLog(seiscomp.client.Application):
 #----------------------------------------------------------------------------------------------------
 	def validateParameters(self):
 		self.urlBase = ""
-		self.server = self.commandline().optionString("host")
+		self.server = self.commandline().optionString("webhost")
 		self.port = self.commandline().optionInt("port")
 		print ("Server:", self.server, "Port: ", self.port)
 
